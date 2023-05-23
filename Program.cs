@@ -1,227 +1,164 @@
 ﻿using System;
 
-// ourAnimals array will store the following: 
-string animalSpecies = "";
-string animalID = "";
-string animalAge = "";
-string animalPhysicalDescription = "";
-string animalPersonalityDescription = "";
-string animalNickname = "";
-string suggestedDonation = "";
+Random random = new Random();
+Console.CursorVisible = false;
+int height = Console.WindowHeight - 1;
+int width = Console.WindowWidth - 5;
+bool shouldExit = false;
 
-// variables that support data entry
-int maxPets = 8;
-string? readResult;
-string menuSelection = "";
-decimal decimalDonation = 0.00m;
+// Console position of the player
+int playerX = 0;
+int playerY = 0;
 
-// array used to store runtime data
-string[,] ourAnimals = new string[maxPets, 7];
+// Console position of the food
+int foodX = 0;
+int foodY = 0;
 
-// sample data ourAnimals array entries
-for (int i = 0; i < maxPets; i++)
+// Available player and food strings
+string[] states = { "('-')", "(^-^)", "(X_X)" };
+string[] foods = { "@@@@@", "$$$$$", "#####" };
+
+// Current player string displayed in the Console
+string player = states[0];
+
+// Index of the current food
+int food = 0;
+
+InitializeGame();
+while (!shouldExit)
 {
-    switch (i)
+    if (TerminalResized())
     {
-        case 0:
-            animalSpecies = "dog";
-            animalID = "d1";
-            animalAge = "2";
-            animalPhysicalDescription = "medium sized cream colored female golden retriever weighing about 45 pounds. housebroken.";
-            animalPersonalityDescription = "loves to have her belly rubbed and likes to chase her tail. gives lots of kisses.";
-            animalNickname = "lola";
-            suggestedDonation = "85.00";
-            break;
-
-        case 1:
-            animalSpecies = "dog";
-            animalID = "d2";
-            animalAge = "9";
-            animalPhysicalDescription = "large reddish-brown male golden retriever weighing about 85 pounds. housebroken.";
-            animalPersonalityDescription = "loves to have his ears rubbed when he greets you at the door, or at any time! loves to lean-in and give doggy hugs.";
-            animalNickname = "gus";
-            suggestedDonation = "49.99";
-            break;
-
-        case 2:
-            animalSpecies = "cat";
-            animalID = "c3";
-            animalAge = "1";
-            animalPhysicalDescription = "small white female weighing about 8 pounds. litter box trained.";
-            animalPersonalityDescription = "friendly";
-            animalNickname = "snow";
-            suggestedDonation = "40.00";
-            break;
-
-        case 3:
-            animalSpecies = "cat";
-            animalID = "c4";
-            animalAge = "";
-            animalPhysicalDescription = "";
-            animalPersonalityDescription = "";
-            animalNickname = "lion";
-            suggestedDonation = "";
-
-            break;
-
-        default:
-            animalSpecies = "";
-            animalID = "";
-            animalAge = "";
-            animalPhysicalDescription = "";
-            animalPersonalityDescription = "";
-            animalNickname = "";
-            suggestedDonation = "";
-            break;
-
+        Console.Clear();
+        Console.Write("Console was resized. Program exiting.");
+        shouldExit = true;
     }
-
-    ourAnimals[i, 0] = "ID #: " + animalID;
-    ourAnimals[i, 1] = "Species: " + animalSpecies;
-    ourAnimals[i, 2] = "Age: " + animalAge;
-    ourAnimals[i, 3] = "Nickname: " + animalNickname;
-    ourAnimals[i, 4] = "Physical description: " + animalPhysicalDescription;
-    ourAnimals[i, 5] = "Personality: " + animalPersonalityDescription;
-
-    if (!decimal.TryParse(suggestedDonation, out decimalDonation))
+    else
     {
-        decimalDonation = 45.00m; // if suggestedDonation NOT a number, default to 45.00
+        if (PlayerIsFaster())
+        {
+            Move(1, false);
+        }
+        else if (PlayerIsSick())
+        {
+            FreezePlayer();
+        }
+        else
+        {
+            Move(otherKeysExit: false);
+        }
+        if (GotFood())
+        {
+            ChangePlayer();
+            ShowFood();
+        }
     }
-    ourAnimals[i, 6] = $"Suggested Donation: {decimalDonation:C2}";
 }
 
-// top-level menu options
-do
+// Returns true if the Terminal was resized 
+bool TerminalResized()
 {
-    // NOTE: the Console.Clear method is throwing an exception in debug sessions
-    Console.Clear();
+    return height != Console.WindowHeight - 1 || width != Console.WindowWidth - 5;
+}
 
-    Console.WriteLine("Welcome to the Contoso PetFriends app. Your main menu options are:");
-    Console.WriteLine(" 1. List all of our current pet information");
-    Console.WriteLine(" 2. Display all dogs with a specified characteristic");
-    Console.WriteLine();
-    Console.WriteLine("Enter your selection number (or type Exit to exit the program)");
+// Displays random food at a random location
+void ShowFood()
+{
+    // Update food to a random index
+    food = random.Next(0, foods.Length);
 
-    readResult = Console.ReadLine();
-    if (readResult != null)
+    // Update food position to a random location
+    foodX = random.Next(0, width - player.Length);
+    foodY = random.Next(0, height - 1);
+
+    // Display the food at the location
+    Console.SetCursorPosition(foodX, foodY);
+    Console.Write(foods[food]);
+}
+
+// Returns true if the player location matches the food location
+bool GotFood()
+{
+    return playerY == foodY && playerX == foodX;
+}
+
+// Returns true if the player appearance represents a sick state
+bool PlayerIsSick()
+{
+    return player.Equals(states[2]);
+}
+
+// Returns true if the player appearance represents a fast state
+bool PlayerIsFaster()
+{
+    return player.Equals(states[1]);
+}
+
+// Changes the player to match the food consumed
+void ChangePlayer()
+{
+    player = states[food];
+    Console.SetCursorPosition(playerX, playerY);
+    Console.Write(player);
+}
+
+// Temporarily stops the player from moving
+void FreezePlayer()
+{
+    System.Threading.Thread.Sleep(1000);
+    player = states[0];
+}
+
+// Reads directional input from the Console and moves the player
+void Move(int speed = 1, bool otherKeysExit = false)
+{
+    int lastX = playerX;
+    int lastY = playerY;
+
+    switch (Console.ReadKey(true).Key)
     {
-        menuSelection = readResult.ToLower();
-    }
-
-    // switch-case to process the selected menu option
-    switch (menuSelection)
-    {
-        case "1":
-            // list all pet info
-            for (int i = 0; i < maxPets; i++)
-            {
-                if (ourAnimals[i, 0] != "ID #: ")
-                {
-                    Console.WriteLine();
-                    for (int j = 0; j < 7; j++)
-                    {
-                        Console.WriteLine(ourAnimals[i, j].ToString());
-                    }
-                }
-            }
-
-            Console.WriteLine("\r\nPress the Enter key to continue");
-            readResult = Console.ReadLine();
-
+        case ConsoleKey.UpArrow:
+            playerY--;
             break;
-
-        case "2":
-            // #1 Display all dogs with a multiple search characteristics
-
-            string dogCharacteristics = "";
-
-            while (dogCharacteristics == "")
-            {
-                // #2 have user enter multiple comma separated characteristics to search for
-                Console.WriteLine($"\nEnter dog characteristics to search for separated by commas");
-                readResult = Console.ReadLine();
-
-                if (readResult != null)
-                {
-                    dogCharacteristics = readResult.ToLower();
-                    Console.WriteLine();
-                }
-            }
-
-            string[] dogSearches = dogCharacteristics.Split(",");
-            // trim leading and trailing spaces from each search term
-            for (int i = 0; i < dogSearches.Length; i++)
-            {
-                dogSearches[i] = dogSearches[i].Trim();
-            }
-
-            Array.Sort(dogSearches);
-            // #4 update to "rotating" animation with countdown
-            string[] searchingIcons = { " |", " /", "--", " \\", " *" };
-
-            bool matchesAnyDog = false;
-            string dogDescription = "";
-
-            // loops through the ourAnimals array to search for matching animals
-            for (int i = 0; i < maxPets; i++)
-            {
-                if (ourAnimals[i, 1].Contains("dog"))
-                {
-
-                    // Search combined descriptions and report results
-                    dogDescription = ourAnimals[i, 4] + "\n" + ourAnimals[i, 5];
-                    bool matchesCurrentDog = false;
-
-                    foreach (string term in dogSearches)
-                    {
-                        // only search if there is a term to search for
-                        if (term != null && term.Trim() != "")
-                        {
-                            for (int j = 2; j > -1; j--)
-                            {
-                                // #5 update "searching" message to show countdown
-                                foreach (string icon in searchingIcons)
-                                {
-                                    Console.Write($"\rsearching our dog {ourAnimals[i, 3]} for {term.Trim()} {icon} {j.ToString()}");
-                                    Thread.Sleep(100);
-                                }
-
-                                Console.Write($"\r{new String(' ', Console.BufferWidth)}");
-                            }
-
-                            // #3a iterate submitted characteristic terms and search description for each term
-                            if (dogDescription.Contains(" " + term.Trim() + " "))
-                            {
-                                // #3b update message to reflect current search term match 
-
-                                Console.WriteLine($"\rOur dog {ourAnimals[i, 3]} matches your search for {term.Trim()}");
-
-                                matchesCurrentDog = true;
-                                matchesAnyDog = true;
-                            }
-                        }
-                    }
-
-                    // #3d if the current dog is match, display the dog's info
-                    if (matchesCurrentDog)
-                    {
-                        Console.WriteLine($"\r{ourAnimals[i, 3]} ({ourAnimals[i, 0]})\n{dogDescription}\n");
-                    }
-                }
-            }
-
-            if (!matchesAnyDog)
-            {
-                Console.WriteLine("None of our dogs are a match found for: " + dogCharacteristics);
-            }
-
-            Console.WriteLine("\n\rPress the Enter key to continue");
-            readResult = Console.ReadLine();
-
+        case ConsoleKey.DownArrow:
+            playerY++;
             break;
-
+        case ConsoleKey.LeftArrow:
+            playerX -= speed;
+            break;
+        case ConsoleKey.RightArrow:
+            playerX += speed;
+            break;
+        case ConsoleKey.Escape:
+            shouldExit = true;
+            break;
         default:
+            // Exit if any other keys are pressed
+            shouldExit = otherKeysExit;
             break;
     }
 
-} while (menuSelection != "exit");
+    // Clear the characters at the previous position
+    Console.SetCursorPosition(lastX, lastY);
+    for (int i = 0; i < player.Length; i++)
+    {
+        Console.Write(" ");
+    }
+
+    // Keep player position within the bounds of the Terminal window
+    playerX = (playerX < 0) ? 0 : (playerX >= width ? width : playerX);
+    playerY = (playerY < 0) ? 0 : (playerY >= height ? height : playerY);
+
+    // Draw the player at the new location
+    Console.SetCursorPosition(playerX, playerY);
+    Console.Write(player);
+}
+
+// Clears the console, displays the food and player
+void InitializeGame()
+{
+    Console.Clear();
+    ShowFood();
+    Console.SetCursorPosition(0, 0);
+    Console.Write(player);
+}
